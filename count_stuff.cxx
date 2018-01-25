@@ -29,9 +29,9 @@
 //==============================================================================
 
 const int  N_DUMP       = 50;
-const int  N_DUMP_FILES = 500;
+const int  N_DUMP_FILES = 50;
 
-const bool DO_FILES = false;
+const bool DO_FILES = true; // false;
 
 
 //==============================================================================
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 
   // mychain.Add("/bar/xrdmon-far-merged/xmfar-*.root");
   // mychain.Add("/bar/xrdmon-xxx-merged/xmxxx-*.root");
-  mychain.Add("/bar/xrdmon-xxx-merged/xmxxx-2017-06.root");
+  mychain.Add("/bar/xrdmon-xxx-merged/xmxxx-2017-08.root");
 
   // Get set up to read domain data from the chain
   SXrdFileInfo   F, *fp = &F;
@@ -229,6 +229,7 @@ int main(int argc, char *argv[])
   TH2I *hps = new TH2I("ProcSiz", "", 20, 0, 0, 20, 0, 0);
   TH1I *hd  = new TH1I("Duration",    "", 20, 0, 0);
   TH2I *hds = new TH2I("DurationSiz", "", 20, 0, 0, 20, 0, 0);
+  TH2I *hpd = new TH2I("ProcDuration", "", 20, 0, 0, 20, 0, 0);
 
   Long64_t tot_count = 0;
   Double_t tot_size = 0, tot_size_read = 0, tot_hours = 0;
@@ -301,8 +302,9 @@ int main(int argc, char *argv[])
       continue;
     }
 
-    // Take MINIAOD and MINIAODSIM only
-    if ( ! F.mName.Contains("/MINIAOD/") && ! F.mName.Contains("/MINIAODSIM/"))
+    // Take MINIAOD and/or MINIAODSIM only
+    // if ( ! F.mName.Contains("/MINIAOD/") && ! F.mName.Contains("/MINIAODSIM/"))
+    if ( ! F.mName.BeginsWith("/store/data/Run2016H/SingleMuon/MINIAOD/18Apr2017-v1"))
     {
       ++rej_not_miniaod;
       continue;
@@ -366,6 +368,7 @@ int main(int argc, char *argv[])
     hps->Fill(proc, F.mSizeMB);
     hd->Fill(hours);
     hds->Fill(hours, F.mSizeMB);
+    hpd->Fill(proc, hours);
 
     // printf("%8.3f %8.3f %2d%% | %5llu %6.3f %6.3f -- %5llds -- %-.30s :: %-.50s\n",
     //        F.mReadStats.mSumX, F.mSizeMB, proc,
@@ -441,16 +444,35 @@ int main(int argc, char *argv[])
   new TRint("count_stuff", &argc, argv);
   gApplication->InitializeGraphics();
 
-  TCanvas *cvs = new TCanvas("Lojze", "", 1280, 1024);
+  TCanvas *cvs = new TCanvas("c1", "", 1280, 1024);
   cvs->Divide(2,2);
+
   cvs->cd(1);
+  hp->SetXTitle("frac read");
   hp->Draw();
+
   cvs->cd(2);
-  hps->Draw("colz");
+  hps->SetXTitle("frac read");      hps->GetXaxis()->SetTitleOffset(2);
+  hps->SetYTitle("file size [MB]"); hps->GetYaxis()->SetTitleOffset(2);
+  hps->Draw("lego2");
+  gPad->SetLogz(1);
+
   cvs->cd(3);
+  hd->SetXTitle("duration [h]");
   hd->Draw();
+
   cvs->cd(4);
-  hds->Draw("colz");
+  hds->SetXTitle("frac read");      hds->GetXaxis()->SetTitleOffset(2);
+  hds->SetYTitle("file size [MB]"); hds->GetYaxis()->SetTitleOffset(2);
+  hds->Draw("lego2");
+  gPad->SetLogz(1);
+
+  cvs = new TCanvas("c2", "", 640, 512);
+
+  hpd->SetXTitle("frac read");    hpd->GetXaxis()->SetTitleOffset(2);
+  hpd->SetYTitle("duration [h]"); hpd->GetYaxis()->SetTitleOffset(2);
+  hpd->Draw("lego2");
+  gPad->SetLogz(1);
 
   gApplication->Run();
 
