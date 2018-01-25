@@ -1,6 +1,6 @@
 CXXFLAGS := -std=c++11 -O2 -g -fPIC
 
-all:	libSXrdClasses.so wisc_anal ucsd_anal analX
+all:	libSXrdClasses.so analX
 
 %.o : %.cxx %.h
 	g++ ${CXXFLAGS} -c -o $@ `root-config --cflags` $<
@@ -10,6 +10,9 @@ SXrdClasses_Dict.h SXrdClasses_Dict.cxx: SXrdClasses.h SXrdClasses_LinkDef.h
 
 libSXrdClasses.so: SXrdClasses.o SXrdClasses_Dict.o
 	g++ ${CXXFLAGS} -shared -o $@ `root-config --cflags` $^
+
+count_stuff: count_stuff.cxx
+	g++ `root-config --cflags --libs` -Wl,-rpath=. count_stuff.cxx -o count_stuff libSXrdClasses.so
 
 wisc_anal: wisc_anal.cxx libSXrdClasses.so
 	g++ ${CXXFLAGS} -o $@ -Wl,-rpath=. `root-config --cflags --libs` $^

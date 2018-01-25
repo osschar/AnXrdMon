@@ -18,6 +18,7 @@
 #include "TH1.h"
 #include "TH2.h"
 #include "TCanvas.h"
+#include "TRint.h"
 
 #include <map>
 #include <iostream>
@@ -186,7 +187,7 @@ bool is_usa(const TString& d)
 // main
 //==============================================================================
 
-int main()
+int main(int argc, char *argv[])
 {
   setlocale(LC_NUMERIC, "en_US");
 
@@ -194,11 +195,12 @@ int main()
   TChain mychain("XrdFar");
 
   // mychain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2012-06-*.root");
-  mychain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2014-*-*.root");
-  // mychain.Add("/bar/xrdmon-far-merged/xmfar-2014-02.root");
+  // mychain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2014-*-*.root");
+  // mychain.Add("/bar/xrdmon-far-merged/xmfar-2017-01.root");
 
   // mychain.Add("/bar/xrdmon-far-merged/xmfar-*.root");
   // mychain.Add("/bar/xrdmon-xxx-merged/xmxxx-*.root");
+  mychain.Add("/bar/xrdmon-xxx-merged/xmxxx-2017-06.root");
 
   // Get set up to read domain data from the chain
   SXrdFileInfo   F, *fp = &F;
@@ -223,8 +225,10 @@ int main()
   Long64_t N = mychain.GetEntries();
   std::cout << N << " entries found.\n";
 
-  TH1I *hp  = new TH1I("Proc",    "", 100, 0, 0);
-  TH2I *hps = new TH2I("ProcSiz", "", 100, 0, 0, 100, 0, 0);
+  TH1I *hp  = new TH1I("Proc",    "", 20, 0, 0);
+  TH2I *hps = new TH2I("ProcSiz", "", 20, 0, 0, 20, 0, 0);
+  TH1I *hd  = new TH1I("Duration",    "", 20, 0, 0);
+  TH2I *hds = new TH2I("DurationSiz", "", 20, 0, 0, 20, 0, 0);
 
   Long64_t tot_count = 0;
   Double_t tot_size = 0, tot_size_read = 0, tot_hours = 0;
@@ -232,8 +236,17 @@ int main()
   TPMERegexp slash("/", "o");
   TPMERegexp domain_re("[^.]+\\.[^.]+$", "o");
 
+  Long64_t acc_count = 0, rej_time = 0, rej_domain = 0, rej_pref = 0, rej_user = 0,
+    rej_not_cmsrun = 0, rej_not_miniaod = 0;
+
+
   for (Long64_t i = 0; i < N; ++i)
   {
+    if (i % 10000 == 0 && i > 0)
+    {
+      printf("  At entry %lld, so far accepted %lld\n", i, acc_count);
+    }
+
     mychain.GetEntry(i);
 
     Double_t hours  = TMath::Max(1ll, F.mCloseTime - F.mOpenTime) / 3600.0;
@@ -248,6 +261,7 @@ int main()
 
     if (F.mCloseTime < min_open_time || F.mOpenTime < min_open_time || hours > 240)
     {
+      ++rej_time;
       C.bad_hours.push_back(i);
       continue;
     }
@@ -269,35 +283,54 @@ int main()
     //   // if (s_domain == u_domain) continue;
     // }
 
-    if ( ! (U.mFromDomain.EndsWith("rl.ac.uk") && S.mDomain.EndsWith("fnal.gov")))
+    // debugging transfers from fnal to ral
+    // if ( ! (U.mFromDomain.EndsWith("rl.ac.uk") && S.mDomain.EndsWith("fnal.gov")))
+    // {
+    //   ++rej_domain;
+    //   continue;
+    // }
+
+    if (F.mName.BeginsWith("/store/test/") ||
+        F.mName.BeginsWith("/store/user/dan/") ||
+        F.mName.BeginsWith("/store/temp/") ||
+        F.mName.BeginsWith("/store/mc/JobRobot/RelValProdTTbar/") ||
+        F.mName.BeginsWith("/store/mc/SAM/GenericTTbar/")
+        )
     {
+      ++rej_pref;
       continue;
     }
 
+    // Take MINIAOD and MINIAODSIM only
+    if ( ! F.mName.Contains("/MINIAOD/") && ! F.mName.Contains("/MINIAODSIM/"))
+    {
+      ++rej_not_miniaod;
+      continue;
+    }
 
-  if (F.mName.BeginsWith("/store/test/") ||
-      F.mName.BeginsWith("/store/user/dan/") ||
-      F.mName.BeginsWith("/store/temp/") ||
-      F.mName.BeginsWith("/store/mc/JobRobot/RelValProdTTbar/") ||
-      F.mName.BeginsWith("/store/mc/SAM/GenericTTbar/")
-  )
-  {
-    continue;
-  }
+    // People who only do monitoring / development / testing.
+    if (U.mRealName.Contains("xrootd-proxy.t2.ucsd.edu") ||
+        U.mRealName.Contains("cms nanoAOD integration bot") ||
+        U.mRealName.Contains("Bockelman") ||
+        U.mRealName.Contains("Andrea Sciaba") ||
+        U.mRealName.Contains("Vuosalo") ||
+        U.mRealName.Contains("Daniel Charles Bradley") ||
+        U.mRealName.Contains("Tadel") ||
+        U.mRealName.IsNull()
+        )
+    {
+      ++rej_user;
+      continue;
+    }
 
-  // People who only do monitoring / development / testing.
-  if (U.mRealName.Contains("Bockelman") ||
-      U.mRealName.Contains("Andrea Sciaba") ||
-      U.mRealName.Contains("Vuosalo") ||
-      U.mRealName.Contains("Daniel Charles Bradley") ||
-      U.mRealName.Contains("Tadel") ||
-      U.mRealName.IsNull()
-  )
-  {
-    continue;
-  }
+    // Require cmsRun access
+    if ( ! U.mRealName.Contains("&x=cmsRun"))
+    {
+      ++rej_not_cmsrun;
+      continue;
+    }
 
-
+    ++acc_count;
 
     // ------------------------------------------------------------------------
     // 
@@ -331,6 +364,8 @@ int main()
 
     hp->Fill(proc);
     hps->Fill(proc, F.mSizeMB);
+    hd->Fill(hours);
+    hds->Fill(hours, F.mSizeMB);
 
     // printf("%8.3f %8.3f %2d%% | %5llu %6.3f %6.3f -- %5llds -- %-.30s :: %-.50s\n",
     //        F.mReadStats.mSumX, F.mSizeMB, proc,
@@ -355,13 +390,11 @@ int main()
     ++tot_count;
   }
 
-  TCanvas *cvs = new TCanvas("Lojze", "", 1024, 512);
-  cvs->Divide(2,1);
-  cvs->cd(1);
-  hp->Draw();
-  cvs->cd(2);
-  hps->Draw("box");
+  // ------------------------------------------------------------------------
 
+  printf("acc_count = %lld, rej_time = %lld, rej_domain = %lld, rej_not_miniaod = %lld, rej_pref = %lld, rej_user = %lld, rej_not_cmsrun = %lld\n",
+         acc_count, rej_time, rej_domain, rej_not_miniaod, rej_pref, rej_user, rej_not_cmsrun);
+  // ------------------------------------------------------------------------
 
   C.print_cdmap(C.users,       "Users",            N_DUMP);
 
@@ -403,6 +436,23 @@ int main()
   printf("\nN = %lld tot_size=%'fTB, tot_size_read = %'fPB\n",
          tot_count, tot_size/1024/1024, tot_size_read/1024/1024/1024);
 
+  // ----------------------------------------------------------------
+
+  new TRint("count_stuff", &argc, argv);
+  gApplication->InitializeGraphics();
+
+  TCanvas *cvs = new TCanvas("Lojze", "", 1280, 1024);
+  cvs->Divide(2,2);
+  cvs->cd(1);
+  hp->Draw();
+  cvs->cd(2);
+  hps->Draw("colz");
+  cvs->cd(3);
+  hd->Draw();
+  cvs->cd(4);
+  hds->Draw("colz");
+
+  gApplication->Run();
 
   return 0;
 }
