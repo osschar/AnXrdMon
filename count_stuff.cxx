@@ -24,6 +24,9 @@
 #include <iostream>
 #include <cassert>
 
+
+void deep_dump(bool pause);
+
 //==============================================================================
 // Countor
 //==============================================================================
@@ -187,6 +190,12 @@ bool is_usa(const TString& d)
 // main
 //==============================================================================
 
+// Get set up to read domain data from the chain
+SXrdFileInfo   F, *fp = &F;
+SXrdUserInfo   U, *up = &U;
+SXrdServerInfo S, *sp = &S;
+SXrdIoInfo     I, *ip = &I;
+
 int main(int argc, char *argv[])
 {
   setlocale(LC_NUMERIC, "en_US");
@@ -202,11 +211,6 @@ int main(int argc, char *argv[])
   // mychain.Add("/bar/xrdmon-xxx-merged/xmxxx-*.root");
   mychain.Add("/bar/xrdmon-xxx-merged/xmxxx-2017-08.root");
 
-  // Get set up to read domain data from the chain
-  SXrdFileInfo   F, *fp = &F;
-  SXrdUserInfo   U, *up = &U;
-  SXrdServerInfo S, *sp = &S;
-
   //mychain.SetBranchStatus("*",1);
   //mychain.SetBranchAddress("S.", &sp);
   //mychain.SetBranchAddress("U.", &up);
@@ -218,6 +222,7 @@ int main(int argc, char *argv[])
   mychain.SetBranchAddress("F.", &fp);
   mychain.SetBranchAddress("U.", &up);
   mychain.SetBranchAddress("S.", &sp);
+  mychain.SetBranchAddress("I.", &ip);
 
 
   Countor C;
@@ -391,6 +396,10 @@ int main(int argc, char *argv[])
     tot_hours     += hours;
 
     ++tot_count;
+
+    // ----------------------------------------------------------------
+
+    deep_dump(false);
   }
 
   // ------------------------------------------------------------------------

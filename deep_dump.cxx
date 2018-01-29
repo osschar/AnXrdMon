@@ -10,7 +10,7 @@ static const double OM = 1.0/1024/1024;
 // E.g. run:
 // rm -f ucsd_test.root; ./ucsd_anal ucsd_test XrdFar /bar/xrdmon-xxx-merged/xmxxx-2013-07.root
 
-void deep_dump()
+void deep_dump(bool pause)
 {
   // Testing / inspection printouts
   printf("%s\n  %s.%s   %s@%s.%s %s\n"
@@ -139,13 +139,17 @@ void deep_dump()
   nvrv.Dump("O_Vv-: ", "\t\tNegative offsets of vector reads (preceeded by vector reads)\n");
   nvrs.Dump("O_Vs-: ", "\t\tNegative offsets of vector reads (preceeded by single reads)\n");
 
-  char uline[256];
-  while (true)
+  if (pause)
   {
-    fgets(uline, 256, stdin);
+    printf("deep_dump: type 1 for reads, 2 for vector reads, enter to continue.\n");
+    char uline[256];
+    while (true)
+    {
+      fgets(uline, 256, stdin);
 
-    if      (uline[0] == '1') I.Dump(1);
-    else if (uline[0] == '2') I.Dump(2);
-    else    break;
+      if      (uline[0] == '1') I.Dump(1);
+      else if (uline[0] == '2') I.Dump(2);
+      else    break;
+    }
   }
 }

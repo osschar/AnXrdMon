@@ -11,8 +11,8 @@ SXrdClasses_Dict.h SXrdClasses_Dict.cxx: SXrdClasses.h SXrdClasses_LinkDef.h
 libSXrdClasses.so: SXrdClasses.o SXrdClasses_Dict.o
 	g++ ${CXXFLAGS} -shared -o $@ `root-config --cflags` $^
 
-count_stuff: count_stuff.cxx libSXrdClasses.so
-	g++ `root-config --cflags --libs` -Wl,-rpath=. count_stuff.cxx -o count_stuff libSXrdClasses.so
+count_stuff: count_stuff.cxx deep_dump.cxx libSXrdClasses.so
+	g++ `root-config --cflags --libs` -Wl,-rpath=. -o count_stuff $^
 
 wisc_anal: wisc_anal.cxx libSXrdClasses.so
 	g++ ${CXXFLAGS} -o $@ -Wl,-rpath=. `root-config --cflags --libs` $^
